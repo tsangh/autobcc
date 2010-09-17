@@ -1,0 +1,21 @@
+From 711e5c1a93391087a97c197a4ac4bb612fb551fc Mon Sep 17 00:00:00 2001
+From: Eric Tsang <eric.hk.tsang@gmail.com>
+Date: Sat, 18 Sep 2010 01:22:58 +0800
+Subject: [PATCH] Change for testing
+
+---
+ control/tmp.txt |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/control/tmp.txt b/control/tmp.txt
+index 641d574..337d413 100644
+--- a/control/tmp.txt
++++ b/control/tmp.txt
+@@ -1,3 +1,4 @@
+ 111
+ 222
+ 333
++444
+-- 
+1.7.1
+
