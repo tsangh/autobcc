@@ -1,0 +1,9 @@
+Package: com.etg.autobcc
+Version: 0.01.10
+Section: misc
+Priority: optional
+Architecture: all
+Maintainer: Eric
+Category: Productivity
+Description: Auto bcc for outgoing email
+Source: {"Category":"Productivity","LastUpdated":"1284655847","Type":"Patch","Title":"Auto bcc for outgoing email","FullDescription":"The is a patch to the WebOS email application. User can setup bcc email address in account preference screen. The bcc address will be automatically added to bcc list of outgoing email during composition.","Homepage":"http://forums.precentral.net/webos-patches/260848-patch-email-auto-bcc.html","Icon":"http://www.webos-internals.org/wiki/Image:Icon_WebOSInternals_Patches_Email.png"}

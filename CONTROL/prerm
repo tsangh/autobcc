@@ -1,0 +1,231 @@
+#!/bin/sh
+
+# Thse empty variables are expected to be set at packaging time
+APP_DIR=/media/cryptofs/apps/autobcc_src
+PATCH_NAME=autobcc_main.patch
+PATCH_NAME_a=autobcc_de_de.patch
+PATCH_NAME_b=autobcc_en_ca.patch
+PATCH_NAME_c=autobcc_en_gb.patch
+PATCH_NAME_d=autobcc_es_es.patch
+PATCH_NAME_e=autobcc_es_us.patch
+PATCH_NAME_f=autobcc_fr_ca.patch
+PATCH_NAME_g=autobcc_fr_fr.patch
+PATCH_NAME_h=autobcc_it_it.patch
+PATCH_NAME_i=autobcc_en_ie.patch
+PATCH_NAME_j=autobcc_es_mx.patch
+
+echo "*** postrm started ***" >> $PATCH_LOG
+
+if [ -f "/media/cryptofs/apps/usr/bin/lsdiff" ] ; then
+  LSDIFF=/media/cryptofs/apps/usr/bin/lsdiff
+else
+  LSDIFF=/var/usr/bin/lsdiff
+fi
+
+if [ -f "/media/cryptofs/apps/usr/bin/patch" ] ; then
+  PATCH_EXEC=/media/cryptofs/apps/usr/bin/patch
+else
+  PATCH_EXEC=/var/usr/bin/patch
+fi
+
+#if [ -f "/media/cryptofs/apps/usr/bin/zip" ] ; then
+#  ZIP_EXEC=/media/cryptofs/apps/usr/bin/zip
+#else
+#  ZIP_EXEC=/usr/bin/zip
+#fi
+
+#if [ -f "/media/cryptofs/apps/usr/bin/unzip" ] ; then
+#  UNZIP_EXEC=/media/cryptofs/apps/usr/bin/unzip
+#else
+#  UNZIP_EXEC=/usr/bin/unzip
+#fi
+
+if [ -f $APP_DIR/$PATCH_NAME ]
+then 
+  FILE_LIST=`$LSDIFF --addprefix=/usr/palm/applications/ $APP_DIR/$PATCH_NAME \
+	$APP_DIR/$PATCH_NAME_a $APP_DIR/$PATCH_NAME_b $APP_DIR/$PATCH_NAME_c \
+	$APP_DIR/$PATCH_NAME_d $APP_DIR/$PATCH_NAME_e $APP_DIR/$PATCH_NAME_f \
+	$APP_DIR/$PATCH_NAME_g $APP_DIR/$PATCH_NAME_h $APP_DIR/$PATCH_NAME_i \
+	$APP_DIR/$PATCH_NAME_j`
+fi
+
+PATCH_LOG=/media/internal/autobcc-install.log
+
+remount_rw() {
+  mount -o rw,remount /
+}
+
+do_failure() {
+  echo "*** FAILED ***" >> $PATCH_LOG
+  exit 1
+}
+
+failed_install() {
+  echo "" >> $PATCH_LOG
+  echo "----------------------------------" >> $PATCH_LOG
+  echo "Installation FAILED!" >> $PATCH_LOG
+  echo "----------------------------------" >> $PATCH_LOG
+
+  for lang in de_de en_ca en_gb es_es es_us fr_ca fr_fr it_it en_ie es_mx
+  do
+	  $PATCH_EXEC -p0 -s --dry-run < ${APP_DIR}/autobcc_$lang.patch | tee -a $PATCH_LOG 1>&2
+  done
+
+  echo "ls ${APP_DIR}" >> $PATCH_LOG
+  ls -R ${APP_DIR} 2>&1 >> $PATCH_LOG
+  do_failure
+}
+
+remove_patch() {
+  if [ -f ${APP_DIR}/$PATCH_NAME ]
+  then
+    if [ "$patch_applied" != "yes" ]
+    then
+	  echo "" | tee -a $PATCH_LOG
+      echo "----------------------------------" | tee -a $PATCH_LOG
+      echo "Removing the patch 1!" | tee -a $PATCH_LOG
+      echo "----------------------------------" | tee -a $PATCH_LOG
+      $PATCH_EXEC -p0 -R --no-backup-if-mismatch < ${APP_DIR}/$PATCH_NAME 2>&1 | tee -a $PATCH_LOG || do_failure
+
+
+  	for lang in de_de en_ca en_gb es_es es_us fr_ca fr_fr it_it en_ie es_mx
+	do
+		if [ -d /usr/palm/applications/com.palm.app.email/resources/$lang ]
+		then
+			if [ ! -h /usr/palm/applications/com.palm.app.email/resources/$lang ]
+			then
+				if [ -f /usr/palm/applications/com.palm.app.email/resources/$lang/views/accountpreferences/accountpreferences-scene.html ]
+				then
+	      				$PATCH_EXEC -p0 -R --no-backup-if-mismatch < ${APP_DIR}/autobcc_$lang.patch 2>&1 | tee -a $PATCH_LOG || do_failure
+				else
+					echo "Removing lang patch: accountpreferences-scene.html not found [$lang]" >> $PATCH_LOG
+				fi
+			else
+				echo "Removing lang patch: is a ling [$lang]" >> $PATCH_LOG
+			fi
+		else
+			echo "Removing lang patch: not a directory [$lang]" >> $PATCH_LOG
+		fi
+	done
+
+
+
+
+
+    fi
+  fi
+}
+
+verify_text_patch() {
+  if [ -f ${APP_DIR}/$PATCH_NAME ]
+  then
+   echo "" >> $PATCH_LOG
+   echo "----------------------------------" >> $PATCH_LOG
+   echo "Dry run patch attempt..." >> $PATCH_LOG
+   echo "----------------------------------" >> $PATCH_LOG
+
+   $PATCH_EXEC -p0 --dry-run  < ${APP_DIR}/$PATCH_NAME 2>&1 >> $PATCH_LOG
+   if [ $? -ne 0 ]
+   then
+     echo "" >> $PATCH_LOG
+     echo "----------------------------------" >> $PATCH_LOG
+     echo "dry run failed, checking if -R would succeed" >> $PATCH_LOG
+     echo "----------------------------------" >> $PATCH_LOG
+     $PATCH_EXEC -R -p0 --dry-run < ${APP_DIR}/$PATCH_NAME 2>&1 >> $PATCH_LOG || failed_install
+     patch_applied=yes
+     echo "Interestingly, the patch seems to already be applied" | tee -a $PATCH_LOG
+   fi
+ fi
+}
+
+
+# MAIN
+if [ ! -f $PATCH_LOG ]
+then 
+  touch $PATCH_LOG
+  echo "******* Patch Log Created by postinst $(date) ************" >> $PATCH_LOG
+fi
+
+remount_rw | tee -a $PATCH_LOG 1>&2
+
+echo "" >> $PATCH_LOG
+echo "------------------------------------------------------" >> $PATCH_LOG
+echo "PATCH INSTALLATION $(date)" >> $PATCH_LOG
+echo "------------------------------------------------------" >> $PATCH_LOG
+
+if [ -f $APP_DIR/$PATCH_NAME ]
+then
+  echo "Contains text patch" >> $PATCH_LOG
+  echo "  $APP_DIR/$PATCH_NAME" >> $PATCH_LOG
+fi
+
+
+if [ "$IPKG_OFFLINE_ROOT" = "" ]
+then
+  IPKG_OFFLINE_ROOT=/media/cryptofs/apps
+fi
+
+if [ "$APP_DIR" = "" ]
+then
+  echo "ERROR: APP_DIR must be set in postinst" | tee -a $PATCH_LOG 1>&2
+  do_failure
+fi
+
+if [ ! -d $APP_DIR ]
+then
+  echo "ERROR: $APP_DIR is not a directory or does not exist!" | tee -a $PATCH_LOG 1>&2
+  do_failure
+fi
+
+if [ ! -f $APP_DIR/$PATCH_NAME ]
+then
+  echo "ERROR: Cannot find patch file!"  | tee -a $PATCH_LOG 1>&2
+  do_failure
+fi
+
+if [ ! -x $PATCH_EXEC ]
+then
+  echo "ERROR: Cannot find $PATCH_EXEC" | tee -a $PATCH_LOG 1>&2
+  do_failure
+fi
+
+if [ ! -x $LSDIFF ]
+then
+  echo "ERROR: Cannot find $LSDIFF" | tee -a $PATCH_LOG 1>&2
+  do_failure
+fi
+
+if [ ! -x $ZIP_EXEC ]
+then
+  echo "ERROR: Cannot find $ZIP_EXEC" | tee -a $PATCH_LOG 1>&2
+  do_failure
+fi
+
+if [ ! -x $UNZIP_EXEC ]
+then
+  echo "ERROR: Cannot find $UNZIP_EXEC" | tee -a $PATCH_LOG 1>&2
+  do_failure
+fi
+
+remove_patch
+
+## Remove remaining patch files 
+for i in $FILE_LIST
+do
+  file=/$i
+  if [ ! -f $file ]
+  then
+    echo "Can not found patch file for removal [$file]." >> $PATCH_LOG
+  else
+    echo "Removing patch file [$file]." >> $PATCH_LOG
+    rm $file  | tee -a $PATCH_LOG 1>&2
+  fi
+done
+
+
+##killall -HUP LunaSysMgr 2>&1
+##killall java 2>&1
+
+echo "SUCCESS" | tee -a $PATCH_LOG
+
+exit 0
